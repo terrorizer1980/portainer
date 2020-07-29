@@ -610,6 +610,9 @@ angular.module('portainer.docker').controller('CreateContainerController', [
       $scope.formValues.NodeName = nodeName;
       HttpRequestHelper.setPortainerAgentTargetHeader(nodeName);
 
+      $scope.isAdmin = Authentication.isAdmin();
+      $scope.isAdminOrEndpointAdmin = await checkIfAdminOrEndpointAdmin();
+
       Volume.query(
         {},
         function (d) {
@@ -672,7 +675,7 @@ angular.module('portainer.docker').controller('CreateContainerController', [
 
       SettingsService.publicSettings()
         .then(function success(data) {
-          $scope.allowBindMounts = data.AllowBindMountsForRegularUsers;
+          $scope.allowBindMounts = $scope.isAdminOrEndpointAdmin || data.AllowBindMountsForRegularUsers;
           $scope.allowPrivilegedMode = data.AllowPrivilegedModeForRegularUsers;
         })
         .catch(function error(err) {
@@ -908,6 +911,15 @@ angular.module('portainer.docker').controller('CreateContainerController', [
       if (rbacEnabled) {
         return Authentication.hasAuthorizations(['EndpointResourcesAccess']);
       }
+    }
+
+    async function checkIfAdminOrEndpointAdmin() {
+      if (Authentication.isAdmin()) {
+        return true;
+      }
+
+      const rbacEnabled = await ExtensionService.extensionEnabled(ExtensionService.EXTENSIONS.RBAC);
+      return rbacEnabled ? Authentication.hasAuthorizations(['EndpointResourcesAccess']) : false;
     }
 
     initView();

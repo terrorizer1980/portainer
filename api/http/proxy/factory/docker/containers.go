@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/docker/docker/client"
-	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/http/proxy/factory/responseutils"
 	"github.com/portainer/portainer/api/http/security"
 )
@@ -159,6 +159,7 @@ func (transport *Transport) decorateContainerCreationOperation(request *http.Req
 			Privileged bool          `json:"Privileged"`
 			PidMode    string        `json:"PidMode"`
 			Devices    []interface{} `json:"Devices"`
+			Binds      []string      `json:"Binds"`
 		} `json:"HostConfig"`
 	}
 
@@ -171,25 +172,12 @@ func (transport *Transport) decorateContainerCreationOperation(request *http.Req
 		return nil, err
 	}
 
-	user, err := transport.userService.User(tokenData.ID)
+	isAdminOrEndpointAdmin, err := transport.isAdminOrEndpointAdmin(request)
 	if err != nil {
 		return nil, err
 	}
 
-	rbacExtension, err := transport.extensionService.Extension(portainer.RBACExtension)
-	if err != nil && err != portainer.ErrObjectNotFound {
-		return nil, err
-	}
-
-	endpointResourceAccess := false
-	_, ok := user.EndpointAuthorizations[portainer.EndpointID(transport.endpoint.ID)][portainer.EndpointResourcesAccess]
-	if ok {
-		endpointResourceAccess = true
-	}
-
-	isAdmin := (rbacExtension != nil && endpointResourceAccess) || tokenData.Role == portainer.AdministratorRole
-
-	if !isAdmin {
+	if !isAdminOrEndpointAdmin {
 		settings, err := transport.settingsService.Settings()
 		if err != nil {
 			return nil, err
@@ -197,7 +185,8 @@ func (transport *Transport) decorateContainerCreationOperation(request *http.Req
 
 		if !settings.AllowPrivilegedModeForRegularUsers ||
 			!settings.AllowHostNamespaceForRegularUsers ||
-			!settings.AllowDeviceMappingForRegularUsers {
+			!settings.AllowDeviceMappingForRegularUsers ||
+			!settings.AllowBindMountsForRegularUsers {
 
 			body, err := ioutil.ReadAll(request.Body)
 			if err != nil {
@@ -220,6 +209,10 @@ func (transport *Transport) decorateContainerCreationOperation(request *http.Req
 
 			if len(partialContainer.HostConfig.Devices) > 0 {
 				return nil, errors.New("forbidden to use device mapping")
+			}
+
+			if !settings.AllowBindMountsForRegularUsers && (len(partialContainer.HostConfig.Binds) > 0) {
+				return forbiddenResponse, errors.New("forbidden to use bind mounts")
 			}
 
 			request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
