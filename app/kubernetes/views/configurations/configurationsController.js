@@ -3,10 +3,11 @@ import KubernetesConfigurationHelper from 'Kubernetes/helpers/configurationHelpe
 
 class KubernetesConfigurationsController {
   /* @ngInject */
-  constructor($async, $state, Notifications, KubernetesConfigurationService, KubernetesApplicationService) {
+  constructor($async, $state, Notifications, Authentication, KubernetesConfigurationService, KubernetesApplicationService) {
     this.$async = $async;
     this.$state = $state;
     this.Notifications = Notifications;
+    this.Authentication = Authentication;
     this.KubernetesConfigurationService = KubernetesConfigurationService;
     this.KubernetesApplicationService = KubernetesApplicationService;
 
@@ -88,6 +89,7 @@ class KubernetesConfigurationsController {
       configurationsLoading: true,
       applicationsLoading: true,
       viewReady: false,
+      isAdmin: this.Authentication.isAdmin(),
     };
 
     await this.getApplications();
