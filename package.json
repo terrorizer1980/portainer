@@ -80,7 +80,7 @@
     "jquery": "^3.5.1",
     "js-yaml": "^3.14.0",
     "lodash-es": "^4.17.15",
-    "moment": "^2.21.0",
+    "moment": "^2.29.4",
     "ng-file-upload": "~12.2.13",
     "spinkit": "^2.0.1",
     "splitargs": "github:deviantony/splitargs#semver:~0.2.0",
